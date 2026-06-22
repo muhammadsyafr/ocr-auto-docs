@@ -1,0 +1,36 @@
+# Dev override — hot reload, no rebuild on code change.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Code edits (.py / .tsx) reload live. Rebuild still needed only when
+# requirements.txt / package.json / Dockerfile change.
+services:
+  api:
+    # Live-mount source + uvicorn --reload
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend/app:/app/app
+
+  worker:
+    # Celery has no native reload -> watchmedo restarts it on .py change.
+    command: >
+      sh -c "pip install --no-cache-dir watchdog &&
+      watchmedo auto-restart --directory=/app/app --pattern='*.py' --recursive --
+      celery -A app.workers.celery_app:celery_app worker --loglevel=info --concurrency=2"
+    volumes:
+      - ./backend/app:/app/app
+
+  frontend:
+    # Replace nginx build with Vite dev server (HMR).
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host --port 5173"
+    environment:
+      API_PROXY: http://api:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules        # keep container's node_modules, don't shadow with host
+    # !override replaces base ports (5173:80) instead of merging -> avoids dup host port
+    ports: !override
+      - "5173:5173"
+    depends_on:
+      - api

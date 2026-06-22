@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ocr
+      POSTGRES_PASSWORD: ocr
+      POSTGRES_DB: ocr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ocr"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - storage:/data
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: ./backend
+    # concurrency = parallel PaddleOCR engines; each ~1.2-1.5GB RAM. Keep low
+    # (2) unless the host has lots of RAM — higher values OOM on small VMs.
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=info --concurrency=2
+    env_file: ./backend/.env
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - storage:/data
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+  # Opt-in offline LLM. Enable with: docker compose --profile offline up
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["offline"]
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+
+volumes:
+  pgdata:
+  storage:
+  ollama:

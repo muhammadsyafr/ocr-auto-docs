@@ -1,0 +1,36 @@
+/* Coral Stay — self-hosted fonts (offline-friendly; no Google CDN).
+   Drop woff2 files into /public/fonts to activate; otherwise the stack
+   falls back to system-ui (see tailwind fontFamily). */
+@font-face {
+  font-family: "Nunito Sans";
+  src: url("/fonts/NunitoSans-Bold.woff2") format("woff2");
+  font-weight: 700 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Sans";
+  src: url("/fonts/DMSans-Regular.woff2") format("woff2");
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white text-text-primary font-body;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  h1, h2, h3 {
+    @apply font-display;
+  }
+}

@@ -9,6 +9,7 @@ import { Upload } from "@/routes/Upload";
 import { Jobs } from "@/routes/Jobs";
 import { Results } from "@/routes/Results";
 import { Detail } from "@/routes/Detail";
+import { Document } from "@/routes/Document";
 import { SettingsPage } from "@/routes/SettingsPage";
 
 const rootRoute = createRootRoute({ component: Layout });
@@ -19,6 +20,7 @@ const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: "/jobs", component: Jobs }),
   createRoute({ getParentRoute: () => rootRoute, path: "/results", component: Results }),
   createRoute({ getParentRoute: () => rootRoute, path: "/results/$id", component: Detail }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/document", component: Document }),
   createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage }),
 ];
 

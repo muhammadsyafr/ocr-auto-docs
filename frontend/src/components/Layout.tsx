@@ -1,11 +1,13 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { FileText, LayoutDashboard, ListChecks, Settings, Table2, Upload } from "lucide-react";
+import { FileSpreadsheet, FileText, LayoutDashboard, ListChecks, Settings, Table2, Upload } from "lucide-react";
+import { SessionSwitcher } from "@/components/SessionSwitcher";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/upload", label: "Upload", icon: Upload },
   { to: "/jobs", label: "Jobs", icon: ListChecks },
   { to: "/results", label: "Results", icon: Table2 },
+  { to: "/document", label: "Document", icon: FileSpreadsheet },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -31,6 +33,9 @@ export function Layout() {
             </Link>
           ))}
         </nav>
+        <div className="ml-auto">
+          <SessionSwitcher />
+        </div>
       </header>
       <main className="mx-auto max-w-container px-6 py-8 md:px-10">
         <Outlet />

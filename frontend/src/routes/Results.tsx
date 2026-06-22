@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Td, Th } from "@/components/ui/table";
 import { api } from "@/services/api";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, FileArchive, Folder } from "lucide-react";
+import { ChevronDown, ChevronRight, FileArchive, FileSpreadsheet, Folder, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { DocumentOut, Job } from "@/types";
 
@@ -14,9 +14,27 @@ function basename(p: string): string {
 }
 
 export function Results() {
+  const qc = useQueryClient();
   const { data: docs } = useQuery({ queryKey: ["results"], queryFn: api.results, refetchInterval: 5000 });
   const { data: jobs } = useQuery({ queryKey: ["jobs"], queryFn: api.jobs, refetchInterval: 5000 });
+  const { data: docInfo } = useQuery({ queryKey: ["docInfo"], queryFn: api.docInfo, refetchInterval: 5000 });
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const push = useMutation({
+    mutationFn: api.pushToDoc,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docInfo"] });
+      qc.invalidateQueries({ queryKey: ["people"] });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: api.deleteJob,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["results"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["metrics"] });
+    },
+  });
 
   const onExport = async () => {
     const out = await api.exportJson();
@@ -54,9 +72,17 @@ export function Results() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-display text-[32px] font-bold text-text-primary">Results</h1>
-        <Button variant="secondary" onClick={onExport}>
-          Export JSON
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={onExport}>
+            Export JSON
+          </Button>
+          <a href={api.docDownloadUrl()}>
+            <Button variant="primary" disabled={!docInfo?.rows}>
+              <FileSpreadsheet size={16} />
+              Download Excel{docInfo?.rows ? ` (${docInfo.rows})` : ""}
+            </Button>
+          </a>
+        </div>
       </div>
 
       {orderedKeys.length === 0 && (
@@ -76,13 +102,12 @@ export function Results() {
           return (
             <Card key={key} className="overflow-hidden hover:translate-y-0 hover:shadow-lvl1">
               {/* Group header */}
-              <button
-                onClick={() => toggle(key)}
-                className="flex w-full items-center gap-3 border-b border-border bg-surface px-4 py-3 text-left"
-              >
-                {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                <Icon size={18} className="text-primary" />
-                <span className="font-display text-base font-bold text-text-primary">{label}</span>
+              <div className="flex w-full items-center gap-3 border-b border-border bg-surface px-4 py-3">
+                <button onClick={() => toggle(key)} className="flex items-center gap-3 text-left">
+                  {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                  <Icon size={18} className="text-primary" />
+                  <span className="font-display text-base font-bold text-text-primary">{label}</span>
+                </button>
                 {job && (
                   <span className="rounded-full border border-border bg-white px-2 py-0.5 text-xs font-semibold uppercase text-neutral">
                     {job.source_type}
@@ -93,8 +118,35 @@ export function Results() {
                   <span className="text-success">{done} ok</span>
                   {failed > 0 && <span className="text-error">{failed} failed</span>}
                   {job && <StatusBadge status={job.status} />}
+                  {job?.status === "completed" && (
+                    <button
+                      onClick={() => push.mutate(job.id)}
+                      disabled={push.isPending}
+                      title="Add this person to the master spreadsheet"
+                      className="flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+                    >
+                      <FileSpreadsheet size={14} />
+                      {push.isPending && push.variables === job.id
+                        ? "Pushing…"
+                        : push.isSuccess && push.variables === job.id
+                          ? "Pushed ✓"
+                          : "Push to doc"}
+                    </button>
+                  )}
+                  {job && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`Remove "${label}" and its results?`)) remove.mutate(job.id);
+                      }}
+                      disabled={remove.isPending}
+                      title="Remove this person from results"
+                      className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs font-semibold text-error hover:bg-error/10"
+                    >
+                      <Trash2 size={14} /> Remove
+                    </button>
+                  )}
                 </span>
-              </button>
+              </div>
 
               {/* Group rows */}
               {isOpen && (

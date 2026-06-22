@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.api.deps import active_session_id
 from app.db import get_db
-from app.models import Document
+from app.models import Document, Job
 from app.models.schemas import DocumentOut, ResultDetail, UnifiedFields, UnifiedResult
 
 router = APIRouter(prefix="/api", tags=["results"])
@@ -14,7 +15,14 @@ router = APIRouter(prefix="/api", tags=["results"])
 
 @router.get("/results", response_model=list[DocumentOut])
 def list_results(db: Session = Depends(get_db)):
-    return db.query(Document).order_by(Document.created_at.desc()).all()
+    sid = active_session_id(db)
+    return (
+        db.query(Document)
+        .join(Job, Document.job_id == Job.id)
+        .filter(Job.session_id == sid)
+        .order_by(Document.created_at.desc())
+        .all()
+    )
 
 
 @router.get("/results/{doc_id}", response_model=ResultDetail)

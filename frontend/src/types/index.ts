@@ -55,3 +55,25 @@ export interface LLMProviders {
   active: { provider: string; model: string };
   providers: LLMProvider[];
 }
+
+export interface WorkSession {
+  id: string;
+  name: string;
+  active: boolean;
+  jobs: number;
+  people: number;
+}
+
+export interface Person {
+  job_id: string;
+  zip_name?: string;
+  nik?: string;
+  full_name?: string;
+  place_of_birth?: string;
+  date_of_birth?: string;
+  company_name?: string;
+  company_address?: string;
+  jenis_pelatihan?: string;
+  ket?: string;
+  photo_path?: string;
+}

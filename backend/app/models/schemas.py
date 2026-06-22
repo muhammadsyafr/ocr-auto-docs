@@ -92,3 +92,32 @@ class BatchSummary(BaseModel):
     successful: int
     failed: int
     generated_at: str
+
+
+class PersonUpdate(BaseModel):
+    """Editable person fields (Document page). All optional — only set ones applied."""
+    nik: Optional[str] = None
+    full_name: Optional[str] = None
+    place_of_birth: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    company_name: Optional[str] = None
+    company_address: Optional[str] = None
+    jenis_pelatihan: Optional[str] = None
+    ket: Optional[str] = None
+
+
+class PersonOut(BaseModel):
+    job_id: str
+    zip_name: Optional[str] = None
+    nik: Optional[str] = None
+    full_name: Optional[str] = None
+    place_of_birth: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    company_name: Optional[str] = None
+    company_address: Optional[str] = None
+    jenis_pelatihan: Optional[str] = None
+    ket: Optional[str] = None
+    photo_path: Optional[str] = None
+
+    class Config:
+        from_attributes = True

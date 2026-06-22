@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import export, jobs, llm, process, results
+from app.api import doc, export, jobs, llm, process, results, sessions
 from app.db import init_db
 from app.services import storage
 
@@ -32,3 +32,5 @@ app.include_router(jobs.router)
 app.include_router(results.router)
 app.include_router(export.router)
 app.include_router(llm.router)
+app.include_router(doc.router)
+app.include_router(sessions.router)

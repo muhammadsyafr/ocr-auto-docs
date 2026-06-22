@@ -1,9 +1,15 @@
-"""Shared API helpers: resolve effective LLM selection (override > default setting > env)."""
+"""Shared API helpers: LLM selection + active session resolution."""
 from app.config import get_settings
 from app.models import Setting
 from app.models.schemas import LLMSelection
 
 settings = get_settings()
+
+
+def active_session_id(db) -> str | None:
+    """Currently selected session (None only before init_db ran)."""
+    row = db.get(Setting, 1)
+    return row.active_session_id if row else None
 
 
 def resolve_llm(db, override: LLMSelection | None) -> tuple[str, str]:

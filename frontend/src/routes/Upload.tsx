@@ -4,8 +4,11 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { api } from "@/services/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { UploadCloud } from "lucide-react";
+import { FolderUp, UploadCloud } from "lucide-react";
 import { useState } from "react";
+
+const SUPPORTED = [".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp"];
+const isSupported = (name: string) => SUPPORTED.some((e) => name.toLowerCase().endsWith(e));
 
 export function Upload() {
   const navigate = useNavigate();
@@ -24,6 +27,25 @@ export function Upload() {
     mutationFn: () => api.processFolder(folderPath, llm),
     onSuccess: goJobs,
   });
+  const uploadFolder = useMutation({
+    mutationFn: ({ files, name }: { files: File[]; name: string }) => api.uploadFolder(files, name),
+    onSuccess: goJobs,
+    onError: (e) => alert(`Folder upload failed: ${e instanceof Error ? e.message : e}`),
+  });
+
+  const onPickFolder = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const all = Array.from(e.target.files ?? []);
+    e.target.value = ""; // allow re-selecting the same folder
+    if (all.length === 0) return;
+    const files = all.filter((f) => isSupported(f.name));
+    if (files.length === 0) {
+      alert(`Folder has ${all.length} files but none are supported (PDF/JPG/PNG/TIFF/BMP).`);
+      return;
+    }
+    const rel = (all[0] as File & { webkitRelativePath?: string }).webkitRelativePath ?? "";
+    const name = rel.split("/")[0] || "upload";
+    uploadFolder.mutate({ files, name });
+  };
 
   const activeProvider = providers?.providers.find((p) => p.provider === (provider || providers.active.provider));
 
@@ -62,6 +84,29 @@ export function Upload() {
               />
             </label>
           </div>
+        </CardBody>
+      </Card>
+
+      {/* Folder upload (browser, webkitdirectory) — 1 folder = 1 person */}
+      <Card className="mb-6">
+        <CardBody>
+          <CardTitle>Upload Folder</CardTitle>
+          <p className="mt-1 font-body text-sm text-text-secondary">
+            Pick a folder of one person's documents (KTP, ijazah, employment letter). All files become one job.
+          </p>
+          <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-10 text-center hover:border-primary">
+            <FolderUp className="mb-3 text-neutral" size={36} />
+            <span className="font-body text-sm font-semibold text-primary">
+              {uploadFolder.isPending ? "Uploading…" : "Choose a folder"}
+            </span>
+            <input
+              type="file"
+              className="hidden"
+              // @ts-expect-error webkitdirectory is non-standard (folder selection)
+              webkitdirectory=""
+              onChange={onPickFolder}
+            />
+          </label>
         </CardBody>
       </Card>
 

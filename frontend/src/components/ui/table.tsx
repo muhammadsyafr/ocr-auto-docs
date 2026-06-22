@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
 
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
   return (
@@ -9,7 +9,7 @@ export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>)
   );
 }
 
-export function Th({ className, ...props }: HTMLAttributes<HTMLTableCellElement>) {
+export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
       className={cn(
@@ -21,6 +21,6 @@ export function Th({ className, ...props }: HTMLAttributes<HTMLTableCellElement>
   );
 }
 
-export function Td({ className, ...props }: HTMLAttributes<HTMLTableCellElement>) {
+export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={cn("border-b border-border px-4 py-3 text-text-primary", className)} {...props} />;
 }

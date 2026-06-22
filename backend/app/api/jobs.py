@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.deps import active_session_id
 from app.db import get_db
 from app.models import Document, Job
 from app.models.schemas import JobOut
@@ -11,7 +12,13 @@ router = APIRouter(prefix="/api", tags=["jobs"])
 
 @router.get("/jobs", response_model=list[JobOut])
 def list_jobs(db: Session = Depends(get_db)):
-    return db.query(Job).order_by(Job.created_at.desc()).all()
+    sid = active_session_id(db)
+    return (
+        db.query(Job)
+        .filter(Job.session_id == sid)
+        .order_by(Job.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=JobOut)
@@ -49,8 +56,9 @@ def delete_job(job_id: str, db: Session = Depends(get_db)):
 
 @router.get("/metrics")
 def metrics(db: Session = Depends(get_db)):
-    """Dashboard metrics (PRD §14)."""
-    q = db.query(Document)
+    """Dashboard metrics (PRD §14), scoped to the active session."""
+    sid = active_session_id(db)
+    q = db.query(Document).join(Job, Document.job_id == Job.id).filter(Job.session_id == sid)
     return {
         "total": q.count(),
         "successful": q.filter(Document.status == "completed").count(),

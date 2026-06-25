@@ -18,4 +18,4 @@ def resolve_llm(db, override: LLMSelection | None) -> tuple[str, str]:
     row = db.get(Setting, 1)
     if row and row.llm_provider and row.llm_model:
         return row.llm_provider, row.llm_model
-    return settings.llm_provider, settings.llm_model
+    return settings.llm_provider, settings.llm_model_default

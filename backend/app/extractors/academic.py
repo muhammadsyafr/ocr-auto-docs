@@ -7,14 +7,21 @@ import re
 
 from app.extractors.base import Extraction
 from app.services.llm import LLMClient
-from app.services.ocr import OcrPage
+from app.services.ocr import OcrPage, full_text
 from app.validators.date import normalize_date
 
 LLM_PROMPT = (
-    "Extract the following from this Indonesian academic certificate OCR text:\n"
-    "1. certificate_number\n2. full_name\n3. place_of_birth\n4. date_of_birth\n"
+    "You are extracting fields from an Indonesian academic certificate (ijazah).\n"
+    "The OCR text below was produced by PaddleOCR (Indonesian + English).\n"
+    "PaddleOCR may merge words without spaces (e.g. 'KEMENTERIANPENDIDIKAN').\n"
+    "Use context to separate merged words when needed.\n\n"
+    "Extract these fields:\n"
+    "1. certificate_number — the document serial/registration number (e.g. DN-XX MA XXXXXXX, No., Nomor)\n"
+    "2. full_name — the student's full name\n"
+    "3. place_of_birth — city/place of birth\n"
+    "4. date_of_birth — as YYYY-MM-DD\n\n"
     "Return ONLY a valid JSON object with these exact keys. "
-    "Use null for any field you cannot find. date_of_birth as YYYY-MM-DD if possible."
+    "Use null for any field you cannot find."
 )
 
 # Common certificate-number formats (PRD §8)
@@ -47,7 +54,7 @@ def _find_cert_number(pages: list[OcrPage]) -> tuple[str | None, float]:
 
 def extract(pages: list[OcrPage], llm: LLMClient | None) -> Extraction:
     ex = Extraction()
-    text = "\n".join(ln.text for p in pages for ln in p.lines)
+    text = full_text(pages)
 
     # Cert number via pattern (footer priority)
     cert, cert_conf = _find_cert_number(pages)

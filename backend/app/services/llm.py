@@ -1,6 +1,6 @@
 """LLM client + provider registry.
 
-External OpenAI-compatible API (default DeepSeek). Selectable per job/default.
+Custom OpenAI-compatible endpoint configurable via env.
 Text-in (OCR output), JSON-out. Keys are server-side only — never returned to UI.
 """
 import json
@@ -19,28 +19,21 @@ class Provider:
     base_url: str
     api_key: str
     models: list[str]
-    offline: bool = False
 
     @property
     def configured(self) -> bool:
-        # Ollama needs no key; others need one.
-        return self.offline or bool(self.api_key)
+        return bool(self.api_key)
 
 
 def _registry() -> dict[str, Provider]:
+    models = [m.strip() for m in settings.llm_models_custom.split(",") if m.strip()]
+    if settings.llm_model_default and settings.llm_model_default not in models:
+        models.insert(0, settings.llm_model_default)
+    name = settings.llm_provider or "custom"
     return {
-        "deepseek": Provider(
-            "deepseek", settings.llm_base_url, settings.llm_api_key,
-            # v4 names current (June 2026); chat/reasoner deprecate 2026-07-24
-            ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner"],
-        ),
-        "openai": Provider(
-            "openai", settings.openai_base_url, settings.openai_api_key,
-            ["gpt-4o-mini", "gpt-4o"],
-        ),
-        "ollama": Provider(
-            "ollama", settings.ollama_base_url, "ollama",
-            ["qwen2.5", "minicpm-v", "llama3.1"], offline=True,
+        name: Provider(
+            name, settings.llm_base_url_custom, settings.llm_api_key_custom,
+            models or [settings.llm_model_default or "default"],
         ),
     }
 
@@ -53,7 +46,6 @@ def list_providers(active_provider: str, active_model: str) -> dict:
             "provider": p.name,
             "models": p.models,
             "configured": p.configured,
-            "offline": p.offline,
         })
     return {
         "active": {"provider": active_provider, "model": active_model},

@@ -1,26 +1,25 @@
-"""OCR service: PaddleOCR primary, Tesseract fallback on low confidence.
-
-Returns OcrPage objects holding lines with text, bbox, confidence.
-PaddleOCR is loaded lazily and cached (heavy init).
+"""OCR service: PaddleOCR primary (structured lines with y_frac),
+Tesseract fallback only. PaddleOCR gives cleaner Indonesian text.
 """
+import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
+import cv2
 import numpy as np
+from PIL import Image as PILImage
 
 from app.config import get_settings
 from app.services import pdf_converter
-from app.services.preprocess import preprocess
 
 settings = get_settings()
+log = logging.getLogger("ocr.service")
 
 
 @dataclass
 class OcrLine:
     text: str
     confidence: float
-    box: list  # 4-point polygon or bbox
-    # vertical center as fraction of page height (0=top, 1=bottom) for region logic
+    box: list
     y_frac: float = 0.0
 
 
@@ -52,25 +51,28 @@ def _get_paddle():
     return _paddle
 
 
-def _paddle_page(img: np.ndarray) -> OcrPage:
+def _paddle_ocr_numpy(img: np.ndarray) -> OcrPage:
     h, w = img.shape[:2]
     result = _get_paddle().ocr(img, cls=True)
     page = OcrPage(height=h, width=w)
     if not result or not result[0]:
         return page
     for box, (text, conf) in result[0]:
-        ys = [pt[1] for pt in box]
-        y_center = sum(ys) / len(ys)
-        page.lines.append(OcrLine(text=text, confidence=float(conf), box=box,
-                                  y_frac=y_center / h if h else 0.0))
+        y_min = min(p[1] for p in box)
+        y_max = max(p[1] for p in box)
+        y_frac = ((y_min + y_max) / 2) / h if h else 0.0
+        page.lines.append(OcrLine(text=text, confidence=round(conf, 3),
+                                  box=box, y_frac=y_frac))
     return page
 
 
-def _tesseract_page(img: np.ndarray) -> OcrPage:
+def _tesseract_fallback(pil_img: PILImage.Image) -> OcrPage:
     import pytesseract
     from pytesseract import Output
-    h, w = img.shape[:2]
-    data = pytesseract.image_to_data(img, output_type=Output.DICT)
+    w, h = pil_img.size
+    config = "--psm 6"
+    data = pytesseract.image_to_data(pil_img, output_type=Output.DICT,
+                                      lang="ind+eng", config=config)
     page = OcrPage(height=h, width=w)
     n = len(data["text"])
     for i in range(n):
@@ -80,27 +82,48 @@ def _tesseract_page(img: np.ndarray) -> OcrPage:
             continue
         y_center = data["top"][i] + data["height"][i] / 2
         page.lines.append(OcrLine(text=txt, confidence=conf / 100.0,
-                                  box=[[data["left"][i], data["top"][i]]],
-                                  y_frac=y_center / h if h else 0.0))
+                                    box=[[data["left"][i], data["top"][i]]],
+                                    y_frac=y_center / h if h else 0.0))
     return page
 
 
 def ocr_file(path: str) -> list[OcrPage]:
-    """OCR every page. Falls back to Tesseract when Paddle confidence is low."""
+    """OCR every page. PaddleOCR primary with structured lines,
+    Tesseract fallback if PaddleOCR fails. Skips OCR when PDF has embedded text."""
+    pdf_texts = pdf_converter.try_extract_text(path)
+    if pdf_texts is not None:
+        log.info("PDF has embedded text, skipping OCR: %s", path)
+        return _text_pages(pdf_texts)
+    log.info("PDF is scanned/image, running OCR: %s", path)
+
+    bgr_images = pdf_converter.to_images(path)
+
     pages: list[OcrPage] = []
-    for raw in pdf_converter.to_images(path):
-        img = preprocess(raw)
-        try:
-            page = _paddle_page(img)
-        except Exception:
-            page = OcrPage()
-        if page.mean_confidence < settings.ocr_min_confidence:
-            try:
-                alt = _tesseract_page(img)
-                if alt.mean_confidence > page.mean_confidence:
-                    page = alt
-            except Exception:
-                pass
+    for i, bgr_img in enumerate(bgr_images):
+        log.info("Page %d: BGR shape=%s", i + 1, bgr_img.shape)
+
+        page = _paddle_ocr_numpy(bgr_img)
+        if page.lines:
+            log.info("Page %d: PaddleOCR conf=%.2f lines=%d", i + 1, page.mean_confidence, len(page.lines))
+        else:
+            log.warning("Page %d: PaddleOCR returned no lines, Tesseract fallback", i + 1)
+            pil_img = PILImage.fromarray(cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB))
+            page = _tesseract_fallback(pil_img)
+            log.info("Page %d: Tesseract fallback conf=%.2f lines=%d", i + 1, page.mean_confidence, len(page.lines))
+
+        pages.append(page)
+    return pages
+
+
+def _text_pages(texts: list[str]) -> list[OcrPage]:
+    pages = []
+    for i, t in enumerate(texts):
+        page = OcrPage()
+        for line in t.splitlines():
+            stripped = line.strip()
+            if stripped:
+                page.lines.append(OcrLine(text=stripped, confidence=0.95,
+                                          box=[], y_frac=0.5))
         pages.append(page)
     return pages
 

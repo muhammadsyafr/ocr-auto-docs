@@ -16,20 +16,16 @@ class Settings(BaseSettings):
     storage_temp: str = "/data/temp"
 
     # OCR
-    ocr_lang: str = "en"  # PaddleOCR lang code; "id" not native, use "en"+latin
+    ocr_lang: str = "id"
     ocr_min_confidence: float = 0.5  # below -> try Tesseract fallback
 
-    # LLM (default provider). Keys are server-side only.
-    llm_provider: str = "deepseek"
-    llm_model: str = "deepseek-v4-flash"
-    llm_base_url: str = "https://api.deepseek.com/v1"
-    llm_api_key: str = ""
+    # LLM — custom OpenAI-compatible endpoint. Keys are server-side only.
+    llm_provider: str = "custom"
+    llm_model_default: str = ""
+    llm_api_key_custom: str = ""
+    llm_base_url_custom: str = ""
+    llm_models_custom: str = ""  # comma-separated, e.g. "gpt-4o-mini,deepseek-chat"
     llm_timeout: int = 60
-
-    # Optional secondary keys for other providers (selectable from UI)
-    openai_api_key: str = ""
-    openai_base_url: str = "https://api.openai.com/v1"
-    ollama_base_url: str = "http://ollama:11434/v1"
 
 
 @lru_cache

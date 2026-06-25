@@ -11,16 +11,17 @@ services:
       - ./backend/app:/app/app
 
   worker:
-    # Celery has no native reload -> watchmedo restarts it on .py change.
-    command: >
-      sh -c "pip install --no-cache-dir watchdog &&
-      watchmedo auto-restart --directory=/app/app --pattern='*.py' --recursive --
-      celery -A app.workers.celery_app:celery_app worker --loglevel=info --concurrency=2"
+    # Plain Celery (NO auto-restart). Auto-restarting on every .py change kills
+    # in-flight OCR jobs mid-task (OCR takes minutes) -> jobs stuck "processing".
+    # Code is still mounted, so after editing worker/pipeline code just run:
+    #   docker compose -f docker-compose.yml -f docker-compose.dev.yml restart worker
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=info --concurrency=2
     volumes:
       - ./backend/app:/app/app
 
   frontend:
     # Replace nginx build with Vite dev server (HMR).
+    build: !reset
     image: node:20-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host --port 5173"

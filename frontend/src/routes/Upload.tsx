@@ -128,7 +128,6 @@ export function Upload() {
                 {providers?.providers.map((p) => (
                   <option key={p.provider} value={p.provider} disabled={!p.configured}>
                     {p.provider}
-                    {p.offline ? " (offline)" : ""}
                     {p.configured ? "" : " — not configured"}
                   </option>
                 ))}

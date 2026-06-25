@@ -48,7 +48,6 @@ export interface LLMProvider {
   provider: string;
   models: string[];
   configured: boolean;
-  offline: boolean;
 }
 
 export interface LLMProviders {

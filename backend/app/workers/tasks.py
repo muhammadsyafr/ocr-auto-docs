@@ -76,7 +76,9 @@ def process_document_task(self, document_id: str):
         db.commit()
         llm = _build_llm(job.llm_provider, job.llm_model)
 
+        log.info("Processing doc %s: %s (llm=%s)", document_id, doc.source_path, llm is not None)
         result = process_document(doc.source_path, llm)
+        log.info("Doc %s done: type=%s conf=%.2f fields=%s", document_id, result["document_type"], result["confidence"], result["fields"])
 
         doc.document_type = result["document_type"]
         doc.confidence = result["confidence"]
@@ -85,6 +87,7 @@ def process_document_task(self, document_id: str):
             "document_type": result["document_type"],
             "confidence": result["confidence"],
             "fields": result["fields"],
+            "field_confidence": result["field_confidence"],
         }
         doc.output_path = storage.write_output_json(doc.filename, payload)
 

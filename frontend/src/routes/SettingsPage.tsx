@@ -3,7 +3,7 @@ import { Card, CardBody, CardTitle } from "@/components/ui/card";
 import { Label, Select } from "@/components/ui/input";
 import { api } from "@/services/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, WifiOff } from "lucide-react";
+import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function SettingsPage() {
@@ -86,11 +86,6 @@ export function SettingsPage() {
                   {p.provider}
                 </span>
                 <span className="flex items-center gap-3 font-body text-xs">
-                  {p.offline && (
-                    <span className="flex items-center gap-1 text-secondary">
-                      <WifiOff size={14} /> offline
-                    </span>
-                  )}
                   {p.configured ? (
                     <span className="flex items-center gap-1 text-success">
                       <Check size={14} /> configured

@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image as PILImage
 
 from app.config import get_settings
-from app.services import pdf_converter
+from app.services import pdf_converter, preprocess
 
 settings = get_settings()
 log = logging.getLogger("ocr.service")
@@ -102,12 +102,13 @@ def ocr_file(path: str) -> list[OcrPage]:
     for i, bgr_img in enumerate(bgr_images):
         log.info("Page %d: BGR shape=%s", i + 1, bgr_img.shape)
 
+        bgr_img = preprocess.preprocess(bgr_img)
         page = _paddle_ocr_numpy(bgr_img)
         if page.lines:
             log.info("Page %d: PaddleOCR conf=%.2f lines=%d", i + 1, page.mean_confidence, len(page.lines))
         else:
             log.warning("Page %d: PaddleOCR returned no lines, Tesseract fallback", i + 1)
-            pil_img = PILImage.fromarray(cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB))
+            pil_img = PILImage.fromarray(cv2.cvtColor(bgr_img, cv2.COLOR_GRAY2RGB) if bgr_img.ndim == 2 else cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB))
             page = _tesseract_fallback(pil_img)
             log.info("Page %d: Tesseract fallback conf=%.2f lines=%d", i + 1, page.mean_confidence, len(page.lines))
 

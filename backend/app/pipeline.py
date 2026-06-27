@@ -22,7 +22,7 @@ def process_document(path: str, llm: LLMClient | None) -> dict:
         doc_type = _llm_classify(text, llm) or doc_type
 
     if doc_type == "ktp":
-        ex = ktp.extract(pages)
+        ex = ktp.extract(pages, path)
     elif doc_type == "employment_certificate":
         ex = employment.extract(pages, llm)
     else:

@@ -174,3 +174,4 @@ docker builder prune -f              # clear build cache only
 | `Folder not found` on process | Path must be inside container (`/data/input`), not a host path |
 | Port already in use | Change host port in `docker-compose.yml` `ports:` |
 | Reset everything | `docker compose down -v && docker compose up --build -d` |
+| Test |
